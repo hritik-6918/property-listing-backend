@@ -1,8 +1,20 @@
-const fs = require("fs")
-const path = require("path")
-const { parse } = require("csv-parse")
-const mongoose = require("mongoose")
-require("dotenv").config()
+const fs = require("fs");
+const path = require("path");
+const { parse } = require("csv-parse");
+const mongoose = require("mongoose");
+require("dotenv").config({ path: [".env.local", ".env"] });
+
+// Check for required environment variables
+if (!process.env.MONGODB_URI) {
+  console.error("Error: MONGODB_URI environment variable is not set");
+  console.log(
+    "Please create a .env.local file with your MongoDB connection string:"
+  );
+  console.log(
+    "MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database"
+  );
+  process.exit(1);
+}
 
 // Simple User schema for the script
 const UserSchema = new mongoose.Schema(
@@ -11,8 +23,8 @@ const UserSchema = new mongoose.Schema(
     password: { type: String, required: true },
     name: { type: String, required: true },
   },
-  { timestamps: true },
-)
+  { timestamps: true }
+);
 
 // Simple Property schema for the script
 const PropertySchema = new mongoose.Schema(
@@ -35,74 +47,78 @@ const PropertySchema = new mongoose.Schema(
     rating: { type: Number, required: false },
     isVerified: { type: Boolean, default: false },
     listingType: { type: String, required: true },
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
-  { timestamps: true },
-)
+  { timestamps: true }
+);
 
-const User = mongoose.model("User", UserSchema)
-const Property = mongoose.model("Property", PropertySchema)
+const User = mongoose.model("User", UserSchema);
+const Property = mongoose.model("Property", PropertySchema);
 
 // Connect to MongoDB
 async function connectToDatabase() {
   try {
-    await mongoose.connect(process.env.MONGODB_URI)
-    console.log("MongoDB connected successfully")
+    await mongoose.connect(process.env.MONGODB_URI);
+    console.log("MongoDB connected successfully");
   } catch (error) {
-    console.error("MongoDB connection error:", error)
-    process.exit(1)
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
   }
 }
 
 // Create admin user
 async function createAdminUser() {
   try {
-    const adminExists = await User.findOne({ email: "admin@example.com" })
+    const adminExists = await User.findOne({ email: "admin@example.com" });
 
     if (!adminExists) {
       const admin = new User({
         email: "admin@example.com",
         password: "admin123",
         name: "Admin User",
-      })
+      });
 
-      await admin.save()
-      console.log("Admin user created successfully")
-      return admin
+      await admin.save();
+      console.log("Admin user created successfully");
+      return admin;
     }
 
-    console.log("Admin user already exists")
-    return adminExists
+    console.log("Admin user already exists");
+    return adminExists;
   } catch (error) {
-    console.error("Error creating admin user:", error)
-    process.exit(1)
+    console.error("Error creating admin user:", error);
+    process.exit(1);
   }
 }
 
 // Process CSV data
 async function importData(csvUrl, adminUser) {
   try {
-    console.log("Fetching CSV data...")
-    const fetch = (await import("node-fetch")).default
-    const response = await fetch(csvUrl)
-    const csvData = await response.text()
+    console.log("Fetching CSV data...");
+    const fetch = (await import("node-fetch")).default;
+    const response = await fetch(csvUrl);
+    const csvData = await response.text();
 
     // Save CSV to temp file
-    const tempFilePath = path.join(__dirname, "temp-data.csv")
-    fs.writeFileSync(tempFilePath, csvData)
+    const tempFilePath = path.join(__dirname, "temp-data.csv");
+    fs.writeFileSync(tempFilePath, csvData);
 
     const parser = fs.createReadStream(tempFilePath).pipe(
       parse({
         columns: true,
         skip_empty_lines: true,
-      }),
-    )
+      })
+    );
 
-    let count = 0
-    const batchSize = 100
-    let batch = []
+    let count = 0;
+    const batchSize = 100;
+    let batch = [];
 
-    console.log("Processing CSV data...")
+    console.log("Processing CSV data...");
 
     for await (const record of parser) {
       // Process the record
@@ -126,58 +142,60 @@ async function importData(csvUrl, adminUser) {
         isVerified: record.isVerified === "True",
         listingType: record.listingType,
         createdBy: adminUser._id,
-      }
+      };
 
-      batch.push(property)
-      count++
+      batch.push(property);
+      count++;
 
       // Insert in batches
       if (batch.length >= batchSize) {
-        await Property.insertMany(batch)
-        console.log(`Imported ${count} properties`)
-        batch = []
+        await Property.insertMany(batch);
+        console.log(`Imported ${count} properties`);
+        batch = [];
       }
     }
 
     // Insert remaining records
     if (batch.length > 0) {
-      await Property.insertMany(batch)
-      console.log(`Imported ${count} properties`)
+      await Property.insertMany(batch);
+      console.log(`Imported ${count} properties`);
     }
 
     // Clean up temp file
-    fs.unlinkSync(tempFilePath)
+    fs.unlinkSync(tempFilePath);
 
-    console.log("Data import completed successfully")
+    console.log("Data import completed successfully");
   } catch (error) {
-    console.error("Error importing data:", error)
-    process.exit(1)
+    console.error("Error importing data:", error);
+    process.exit(1);
   }
 }
 
 // Main function
 async function main() {
   try {
-    await connectToDatabase()
+    await connectToDatabase();
 
     // Check if data already exists
-    const count = await Property.countDocuments()
+    const count = await Property.countDocuments();
     if (count > 0) {
-      console.log(`Database already contains ${count} properties. Skipping import.`)
-      process.exit(0)
+      console.log(
+        `Database already contains ${count} properties. Skipping import.`
+      );
+      process.exit(0);
     }
 
-    const adminUser = await createAdminUser()
+    const adminUser = await createAdminUser();
 
     const csvUrl =
-      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/dataset-CSV-Zm8d7CQF5cNWoibX91H6FeMgjdkaXL.csv"
-    await importData(csvUrl, adminUser)
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/dataset-CSV-Zm8d7CQF5cNWoibX91H6FeMgjdkaXL.csv";
+    await importData(csvUrl, adminUser);
 
-    mongoose.connection.close()
+    mongoose.connection.close();
   } catch (error) {
-    console.error("Error in main function:", error)
-    process.exit(1)
+    console.error("Error in main function:", error);
+    process.exit(1);
   }
 }
 
-main()
+main();
