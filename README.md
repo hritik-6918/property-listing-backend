@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Property Listing System
 
-## Getting Started
+A backend system for managing property listings with advanced filtering, user authentication, and property favorites.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- CRUD operations for properties
+- Advanced search/filtering based on 10+ attributes
+- Redis caching for optimized performance
+- User registration and login with email/password
+- Favorite properties functionality
+- Property recommendation system
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- TypeScript / Node.js
+- Next.js (App Router)
+- MongoDB
+- Redis (for caching)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## API Documentation
 
-## Learn More
+### Authentication
 
-To learn more about Next.js, take a look at the following resources:
+- `POST /api/auth/register` - Register a new user
+- `POST /api/auth/login` - Login and get authentication token
+- `POST /api/auth/logout` - Logout and clear authentication token
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Properties
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `GET /api/properties` - Get all properties with filtering options
+- `GET /api/properties/:id` - Get a specific property by ID
+- `POST /api/properties` - Create a new property (requires authentication)
+- `PUT /api/properties/:id` - Update a property (requires authentication and ownership)
+- `DELETE /api/properties/:id` - Delete a property (requires authentication and ownership)
 
-## Deploy on Vercel
+### Favorites
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `GET /api/favorites` - Get all favorites for the authenticated user
+- `POST /api/favorites/:propertyId` - Add a property to favorites
+- `DELETE /api/favorites/:propertyId` - Remove a property from favorites
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Recommendations
+
+- `GET /api/recommendations` - Get all recommendations received by the authenticated user
+- `POST /api/recommendations` - Recommend a property to another user
+
+## Setup and Installation
+
+1. Clone the repository
+2. Install dependencies:
+   \`\`\`
+   npm install
+   \`\`\`
+3. Create a `.env.local` file with the following variables:
+   \`\`\`
+   MONGODB_URI=your-mongodb-connection-string
+   REDIS_URL=your-redis-connection-string
+   JWT_SECRET=your-jwt-secret-key
+   \`\`\`
+4. Import the CSV data:
+   \`\`\`
+   npm run import-data
+   \`\`\`
+5. Run the development server:
+   \`\`\`
+   npm run dev
+   \`\`\`
+
+## Data Import
+
+The system includes a script to import the CSV data into MongoDB. Run:
+
+\`\`\`
+npm run import-data
+\`\`\`
+
+This will create an admin user and import all properties from the CSV file.
+
+## Deployment
+
+The application can be deployed to Vercel or any other hosting service that supports Next.js applications.
+
+## Environment Variables
+
+- `MONGODB_URI`: MongoDB connection string
+- `REDIS_URL`: Redis connection string
+- `JWT_SECRET`: Secret key for JWT token generation and validation
